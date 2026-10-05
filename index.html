@@ -1,0 +1,131 @@
+<!doctype html>
+<html lang="en-GB">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+  <meta name="theme-color" content="#1565c0">
+  <meta name="description" content="Singapore real-time PM2.5 readings from data.gov.sg">
+  <link rel="manifest" href="manifest.webmanifest">
+  <link rel="icon" href="icon.svg" type="image/svg+xml">
+  <title>Singapore PM2.5</title>
+  <style>
+    :root { font-family: system-ui, -apple-system, "Segoe UI", sans-serif; color: #17212b; background: #f5f7fa; }
+    * { box-sizing: border-box; }
+    body { margin: 0; min-height: 100vh; display: flex; justify-content: center; }
+    main { width: min(680px, 100%); padding: 22px 18px 30px; }
+    h1 { margin: 0; font-size: 28px; }
+    .sub { margin: 5px 0 22px; color: #66717d; font-size: 14px; }
+    button { width: 100%; border: 0; border-radius: 14px; padding: 16px; font-size: 17px; font-weight: 700; background: #1565c0; color: white; box-shadow: 0 3px 10px #0002; }
+    button:disabled { opacity: .65; }
+    .status { min-height: 24px; margin: 15px 2px 8px; font-size: 14px; color: #53606c; }
+    .error { color: #b3261e; }
+    .grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+    .card { background: white; border-radius: 16px; padding: 17px; box-shadow: 0 1px 6px #0001; }
+    .region { color: #59636d; font-size: 15px; }
+    .value { margin-top: 5px; font-size: 30px; font-weight: 750; }
+    .unit { font-size: 13px; font-weight: 500; color: #68727c; }
+    .wide { grid-column: 1 / -1; }
+    .meta { margin-top: 18px; color: #68727c; font-size: 12px; line-height: 1.5; }
+    .refresh { margin-top: 15px; background: transparent; color: #1565c0; border: 1px solid #1565c0; box-shadow: none; }
+    @media (max-width: 390px) { .grid { grid-template-columns: 1fr; } .wide { grid-column: auto; } }
+  </style>
+</head>
+<body>
+<main>
+  <h1>Singapore PM2.5</h1>
+  <div class="sub">Real-time readings from NEA via data.gov.sg</div>
+
+  <button id="get">GET LATEST PM2.5</button>
+  <div id="status" class="status">Tap the button to retrieve the latest reading.</div>
+
+  <section id="results" class="grid" aria-live="polite"></section>
+
+  <div id="meta" class="meta"></div>
+  <button id="refresh" class="refresh" hidden>Refresh</button>
+</main>
+
+<script>
+const API = "https://api-open.data.gov.sg/v2/real-time/api/pm25";
+const regions = ["north", "south", "east", "west", "central"];
+
+const getButton = document.getElementById("get");
+const refreshButton = document.getElementById("refresh");
+const statusEl = document.getElementById("status");
+const resultsEl = document.getElementById("results");
+const metaEl = document.getElementById("meta");
+
+function singaporeTime(value) {
+  try {
+    return new Intl.DateTimeFormat("en-GB", {
+      timeZone: "Asia/Singapore",
+      dateStyle: "medium",
+      timeStyle: "short",
+      hour12: false
+    }).format(new Date(value));
+  } catch {
+    return value;
+  }
+}
+
+function display(data) {
+  const item = data.data.items[0];
+  const readings = item.readings.pm25_one_hourly;
+
+  resultsEl.innerHTML = regions.map(region => `
+    <article class="card ${region === "central" ? "wide" : ""}">
+      <div class="region">${region[0].toUpperCase() + region.slice(1)}</div>
+      <div class="value">${readings[region] ?? "—"} <span class="unit">µg/m³</span></div>
+    </article>
+  `).join("");
+
+  metaEl.innerHTML =
+    `Reading time: <strong>${singaporeTime(item.timestamp)}</strong><br>` +
+    `API updated: ${singaporeTime(item.updatedTimestamp)}<br>` +
+    `Source: Singapore Government data.gov.sg / National Environment Agency`;
+
+  statusEl.textContent = "Latest reading retrieved successfully.";
+  statusEl.className = "status";
+  refreshButton.hidden = false;
+}
+
+async function load() {
+  getButton.disabled = true;
+  refreshButton.disabled = true;
+  statusEl.textContent = "Retrieving latest reading…";
+  statusEl.className = "status";
+
+  try {
+    const response = await fetch(API, {
+      method: "GET",
+      headers: { "Accept": "application/json" },
+      cache: "no-store"
+    });
+
+    if (!response.ok) {
+      if (response.status === 429) {
+        throw new Error("Rate limit reached. Please wait a few seconds and try again.");
+      }
+      throw new Error(`API returned HTTP ${response.status}.`);
+    }
+
+    const data = await response.json();
+
+    if (data.code !== 0) {
+      throw new Error(data.errorMsg || "The API returned an error.");
+    }
+
+    display(data);
+  } catch (error) {
+    statusEl.textContent = error.message || "Unable to retrieve PM2.5 data.";
+    statusEl.className = "status error";
+  } finally {
+    getButton.disabled = false;
+    refreshButton.disabled = false;
+  }
+}
+
+getButton.addEventListener("click", load);
+refreshButton.addEventListener("click", load);
+</script>
+</body>
+</html>

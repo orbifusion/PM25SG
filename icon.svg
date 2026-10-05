@@ -1,0 +1,8 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512">
+  <rect width="512" height="512" rx="110" fill="#1565c0"/>
+  <circle cx="256" cy="256" r="145" fill="white" opacity=".96"/>
+  <path d="M150 270c42-72 170-72 212 0" fill="none" stroke="#1565c0" stroke-width="30" stroke-linecap="round"/>
+  <circle cx="190" cy="220" r="18" fill="#1565c0"/>
+  <circle cx="322" cy="220" r="18" fill="#1565c0"/>
+  <text x="256" y="350" text-anchor="middle" font-family="Arial,sans-serif" font-size="70" font-weight="700" fill="#1565c0">PM2.5</text>
+</svg>
