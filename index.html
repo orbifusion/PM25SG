@@ -23,6 +23,8 @@
     .card { background: white; border-radius: 16px; padding: 10px; box-shadow: 0 1px 6px #0001; }
     .region { color: #59636d; font-size: 15px; }
     .value { margin-top: 5px; font-size: 30px; font-weight: 750; }
+    .reading { white-space: nowrap; }
+    .classification { font-size: 20px; font-weight: 400; }
     .unit { font-size: 13px; font-weight: 500; color: #68727c; }
     .wide { grid-column: 1 / -1; }
     .meta { margin-top: 18px; color: #68727c; font-size: 12px; line-height: 1.5; }
@@ -66,16 +68,61 @@ function singaporeTime(value) {
   }
 }
 
+function getAirQuality(value) {
+  const pm25 = Number(value);
+
+  if (!Number.isFinite(pm25)) {
+    return {
+      color: "#ffffff",
+      label: ""
+    };
+  }
+
+  if (pm25 <= 55) {
+    return {
+      color: "#DCFCE7",
+      label: "Normal"
+    };
+  }
+
+  if (pm25 <= 150) {
+    return {
+      color: "#FEF9C3",
+      label: "Elevated"
+    };
+  }
+
+  if (pm25 <= 250) {
+    return {
+      color: "#FFEDD5",
+      label: "High"
+    };
+  }
+
+  return {
+    color: "#FEE2E2",
+    label: "Very High"
+  };
+}
+
 function display(data) {
   const item = data.data.items[0];
   const readings = item.readings.pm25_one_hourly;
 
-  resultsEl.innerHTML = regions.map(region => `
-    <article class="card">
-      <div class="region">${region[0].toUpperCase() + region.slice(1)}</div>
-      <div class="value">${readings[region] ?? "—"} <span class="unit">µg/m³</span></div>
-    </article>
-  `).join("");
+  resultsEl.innerHTML = regions.map(region => {
+    const reading = readings[region];
+    const airQuality = getAirQuality(reading);
+
+    return `
+      <article class="card" style="background-color: ${airQuality.color};">
+        <div class="region">${region[0].toUpperCase() + region.slice(1)}</div>
+        <div class="value">
+          <span class="reading">${reading ?? "—"} <span class="unit">µg/m³</span></span>
+          ${airQuality.label ? ` <span class="classification">${airQuality.label}</span>` : ""}
+        </div>
+      </article>
+    `;
+  }).join("");
 
   metaEl.innerHTML =
     `Reading time: <strong>${singaporeTime(item.timestamp)}</strong><br>` +
@@ -128,3 +175,4 @@ refreshButton.addEventListener("click", load);
 </script>
 </body>
 </html>
+```
